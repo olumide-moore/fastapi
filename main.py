@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status, HTTPException
 from fastapi.params import Body
 
 from pydantic import BaseModel #pydantic is a library that allows us to create classes that are used to define the data that we receive in our API#
@@ -35,16 +35,31 @@ def find_post(id):
             return post
     return None
 @app.get("/posts/{id}") #note: /latest route is similar to this but it is executed first, so this runs if the parameter is not latest
-def get_post(id: int):
-    return {"post": find_post(id)}
+def get_post(id: int, response: Response):
+    post=find_post(id)
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail=f"post with id {id} not found")
+    return {"post": post}
 
-@app.post("/posts")
+@app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_post(mydata: Post):
     # print(mydata.title)
     mydata_dict=mydata.model_dump() #returns a dictionary of the data
     mydata_dict["id"]=randrange(0,1000000)
     test_posts.append(mydata_dict)
     return (mydata_dict)
+
+
+@app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id: int):
+    #find the post
+    post=find_post(id)
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail=f"post with id {id} not found")
+    test_posts.remove(post)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 #Note: Finding a route in fastapi follows methods order
 #The first route that matches the request will be the one that is executed
