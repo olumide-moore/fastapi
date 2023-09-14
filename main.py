@@ -25,14 +25,17 @@ def read_root():
 def get_posts():
     return {"data": test_posts}
 
+@app.get("/posts/latest") 
+def get_latest_post():
+    return {"post": test_posts[-1]} #returns the last element in the list
+
 def find_post(id):
     for post in test_posts:
         if post["id"]==id:
             return post
     return None
-@app.get("/posts/{id}")
+@app.get("/posts/{id}") #note: /latest route is similar to this but it is executed first, so this runs if the parameter is not latest
 def get_post(id: int):
-    
     return {"post": find_post(id)}
 
 @app.post("/posts")
