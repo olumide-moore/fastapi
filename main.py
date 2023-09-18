@@ -6,7 +6,7 @@ from pydantic import BaseModel #pydantic is a library that allows us to create c
 
 from random import randrange
 app = FastAPI() # Create an instance of the FastAPI class
-#run unicorn main:app --reload to run the server
+#run uvicorn main:app --reload to run the server
 test_posts= [{"title":"First Post", "content":"This is the content of the first post", "published":True, "rating":4, "id":1},
              {"title":"Second Post", "content":"This is the content of the second post", "published":True, "rating":5, "id":2}]
 
@@ -29,18 +29,18 @@ def get_posts():
 def get_latest_post():
     return {"post": test_posts[-1]} #returns the last element in the list
 
-def find_post(id):
-    for post in test_posts:
-        if post["id"]==id:
-            return post
+def find_post_index(id):
+    for i in range(len(test_posts)):
+        if test_posts[i]["id"]==id:
+            return i
     return None
 @app.get("/posts/{id}") #note: /latest route is similar to this but it is executed first, so this runs if the parameter is not latest
 def get_post(id: int, response: Response):
-    post=find_post(id)
-    if not post:
+    index=find_post_index(id)
+    if index==None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"post with id {id} not found")
-    return {"post": post}
+    return {"post": test_posts[index]}
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_post(mydata: Post):
@@ -48,17 +48,29 @@ def create_post(mydata: Post):
     mydata_dict=mydata.model_dump() #returns a dictionary of the data
     mydata_dict["id"]=randrange(0,1000000)
     test_posts.append(mydata_dict)
-    return (mydata_dict)
+    return mydata_dict
+
+@app.put("/posts/{id}")
+def update_post(id: int, newdata: Post):
+    #find the post
+    index=find_post_index(id)
+    if index==None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail=f"post with id {id} not found")
+    newdata_dict=newdata.model_dump()
+    newdata_dict["id"]=id
+    test_posts[index]=newdata_dict
+    return {"post": newdata_dict}
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
     #find the post
-    post=find_post(id)
-    if not post:
+    index=find_post_index(id)
+    if index==None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"post with id {id} not found")
-    test_posts.remove(post)
+    test_posts.remove(test_posts[index])
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 #Note: Finding a route in fastapi follows methods order
