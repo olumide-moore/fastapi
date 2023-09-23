@@ -5,12 +5,24 @@ from fastapi.params import Body
 from pydantic import BaseModel #pydantic is a library that allows us to create classes that are used to define the data that we receive in our API#
 
 from random import randrange
+import psycopg2
+from time import sleep
 app = FastAPI() # Create an instance of the FastAPI class
 #run uvicorn app.main:app --reload to run the server
 test_posts= [{"title":"First Post", "content":"This is the content of the first post", "published":True, "rating":4, "id":1},
              {"title":"Second Post", "content":"This is the content of the second post", "published":True, "rating":5, "id":2}]
 
-
+while True:
+    try: 
+        conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='Aston2021')
+        cursor=conn.cursor()
+        print("Connected to the database")
+        break
+    except Exception as e:
+        print("Error connecting to the database")
+        print(e)
+        sleep(3)
+    
 class Post(BaseModel): #using pydantic to validate the data that we receive
     title: str 
     content: str
