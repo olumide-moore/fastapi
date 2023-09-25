@@ -35,7 +35,9 @@ def read_root():
     return {"Hello": "Hey there!"}
 @app.get("/posts")
 def get_posts():
-    return {"data": test_posts}
+    cursor.execute("""SELECT * FROM posts""")
+    posts=cursor.fetchall()
+    return posts
 
 @app.get("/posts/latest") 
 def get_latest_post():
@@ -48,41 +50,40 @@ def find_post_index(id):
     return None
 @app.get("/posts/{id}") #note: /latest route is similar to this but it is executed first, so this runs if the parameter is not latest
 def get_post(id: int, response: Response):
-    index=find_post_index(id)
-    if index==None:
+    cursor.execute("SELECT * FROM posts WHERE id = %s", (str(id),))
+    post=cursor.fetchone()
+    if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"post with id {id} not found")
-    return {"post": test_posts[index]}
+    return post
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_post(mydata: Post):
-    # print(mydata.title)
-    mydata_dict=mydata.model_dump() #returns a dictionary of the data
-    mydata_dict["id"]=randrange(0,1000000)
-    test_posts.append(mydata_dict)
-    return mydata_dict
+    cursor.execute("""INSERT INTO posts (title, content, published) VALUES(%s, %s, %s) RETURNING *""",(mydata.title, mydata.content, mydata.published,))
+    newpost=cursor.fetchone()
+    conn.commit()
+    return newpost
 
 @app.put("/posts/{id}")
 def update_post(id: int, newdata: Post):
-    #find the post
-    index=find_post_index(id)
-    if index==None:
+    cursor.execute("""UPDATE posts SET title=%s, content=%s, published=%s WHERE id=%s returning *""",
+                   (newdata.title,newdata.content, newdata.published,str(id),))
+    post= cursor.fetchone()
+    conn.commit()
+    if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"post with id {id} not found")
-    newdata_dict=newdata.model_dump()
-    newdata_dict["id"]=id
-    test_posts[index]=newdata_dict
-    return {"post": newdata_dict}
+    return {"post": post}
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    #find the post
-    index=find_post_index(id)
-    if index==None:
+    cursor.execute("""DELETE FROM posts WHERE id = %s returning *""",(str(id),))
+    post= cursor.fetchone()
+    conn.commit()
+    if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail=f"post with id {id} not found")
-    test_posts.remove(test_posts[index])
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 #Note: Finding a route in fastapi follows methods order
